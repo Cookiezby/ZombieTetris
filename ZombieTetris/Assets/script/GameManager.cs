@@ -11,8 +11,8 @@ public class GameManager : MonoBehaviour {
 	private Spawn spawnInstance;
 	public bool haveCurrentBox = false;
 	public GameObject currentBox;
-	public List<GameObject> currentBoxChild;
-	private List<GameObject> boxChildStopped;
+	public List<GameObject> currentBoxChild = new List<GameObject>();
+	private List<GameObject> boxChildStopped = new List<GameObject>();
 	private int[] eachRowBlockAmount = new int[33];
 	private GameObject[,] boxChildStoppedArray = new GameObject[20,32];
 	private int[,] boxStoppedTag = new int[20,32];
@@ -29,8 +29,6 @@ public class GameManager : MonoBehaviour {
 	void Start () {
 	   spawnInstance = Spawn.instance;
 	   InvokeRepeating("moveDown",0f,0.5f);
-	   currentBoxChild = new List<GameObject>();
-	   boxChildStopped = new List<GameObject>();
 	}
 	// Update is called once per frame
 	void Update () {
@@ -93,13 +91,18 @@ public class GameManager : MonoBehaviour {
 			currentBox.transform.Rotate(0,0,90);
 		}*/
 		if(haveCurrentBox){
-			Vector3 centerPosition = currentBox.transform.position;
+			Vector3[] prePosition = new Vector3[currentBoxChild.Count];
+			for(int i = 0; i < currentBoxChild.Count ;i++){
+				prePosition[i] = currentBoxChild[i].transform.position;
+			}
+
+			Vector3 centerPosition = currentBoxChild[0].transform.position;
 			foreach (GameObject boxChild in currentBoxChild) {
 				Vector3 dir = boxChild.transform.position - centerPosition;
 				dir = Quaternion.Euler(new Vector3(0,0,90))*dir;
 				boxChild.transform.position =  centerPosition + dir;
 			}
-			if(!checkMoveable()){
+			if(!checkInBound()){
 				//adjust to the right position, not refuse raotate;
 
 				float minX = 1f;
@@ -123,21 +126,26 @@ public class GameManager : MonoBehaviour {
 				}
 				currentBox.transform.position += new Vector3 (padding,0,0);
 
+			}else if(!checkOverlap()){
+				for(int i = 0; i < currentBoxChild.Count ;i++){
+					currentBoxChild[i].transform.position = prePosition[i];
+				}
 			}
 		}
 
 
 	}
 
-	bool checkOutOfBound(){
+	bool checkInBound(){
+
 		foreach (GameObject boxChild in currentBoxChild) {
 			Vector3 position = boxChild.transform.position;
 			if(!(position.x >= 1 && position.x <= gridWidth && position.y >= 1)){
-			  //Debug.Log(position.x);
-			   return false;
+			  return false;
 			}
 			//Debug.Log(position.x+" "+position.y);
 		}
+		//Debug.Log("inBound");
 		return true;
 	}
 
@@ -152,11 +160,12 @@ public class GameManager : MonoBehaviour {
 				}
 			}
 		}
+		//Debug.Log("Overlap True");
 		return true;
 	}
 
 	bool checkMoveable(){
-		if(checkOutOfBound()&&checkOverlap()){
+		if(checkInBound()&&checkOverlap()){
 			return true;
 		}else{
 			return false;
