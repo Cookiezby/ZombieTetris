@@ -9,13 +9,13 @@ public class GameManager : MonoBehaviour {
 	public static int gridWidth = 20;
 	public static int gridHeight = 32;
 	private Spawn spawnInstance;
-	public bool haveCurrentBox = false;
-	public GameObject currentBox;
-	public List<GameObject> currentBoxChild = new List<GameObject>();
-	private List<GameObject> boxChildStopped = new List<GameObject>();
-	private int[] eachRowBlockAmount = new int[33];
-	private GameObject[,] boxChildStoppedArray = new GameObject[20,32];
-	private int[,] boxStoppedTag = new int[20,32];
+	public bool haveCurrentTetris = false;
+	public GameObject currentTetris;
+	public List<GameObject> currentTetrisBlockList = new List<GameObject>();
+	private List<GameObject> stoppedTetrisBlockList = new List<GameObject>();
+	private int[] eachRowBlockAmount = new int[gridHeight + 1];
+	private List<GameObject> stoppedZombieBlockList = new List<GameObject>();
+
 	
 	void Awake(){
 		if(instance == null){
@@ -28,7 +28,7 @@ public class GameManager : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 	   spawnInstance = Spawn.instance;
-	   InvokeRepeating("moveDown",0f,0.5f);
+	   InvokeRepeating("moveDown",0f,0.2f);
 	}
 	// Update is called once per frame
 	void Update () {
@@ -55,33 +55,34 @@ public class GameManager : MonoBehaviour {
 	}
 // the key function
 	void moveDown(){
-		if(haveCurrentBox){
-			Vector3 prePosition = currentBox.transform.position;
-			currentBox.transform.position += new Vector3(0,-1,0);
+		if(haveCurrentTetris){
+			Vector3 prePosition = currentTetris.transform.position;
+			currentTetris.transform.position += new Vector3(0,-1,0);
 			if(!checkMoveable()){
-				currentBox.transform.position = prePosition;
+				currentTetris.transform.position = prePosition;
 				moveToStoppedList();
+				zombieInfect();
 				checkRowFull();
 				SpawnBox();
 			}
 		}
 	}
 	void moveRight(){
-		if(haveCurrentBox){
-			Vector3 prePoisition = currentBox.transform.position;
-			currentBox.transform.position += new Vector3(1,0,0);
+		if(haveCurrentTetris){
+			Vector3 prePoisition = currentTetris.transform.position;
+			currentTetris.transform.position += new Vector3(1,0,0);
 			if(!checkMoveable()){
-				currentBox.transform.position = prePoisition;
+				currentTetris.transform.position = prePoisition;
 			}
 		}
 	}
 	
 	void moveLeft(){
-		if(haveCurrentBox){
-			Vector3 prePosition = currentBox.transform.position;
-			currentBox.transform.position += new Vector3(-1,0,0);
+		if(haveCurrentTetris){
+			Vector3 prePosition = currentTetris.transform.position;
+			currentTetris.transform.position += new Vector3(-1,0,0);
 			if(!checkMoveable()){
-				currentBox.transform.position = prePosition;
+				currentTetris.transform.position = prePosition;
 			}
 		}
 	}
@@ -90,14 +91,14 @@ public class GameManager : MonoBehaviour {
 		/*if(haveCurrentBox){
 			currentBox.transform.Rotate(0,0,90);
 		}*/
-		if(haveCurrentBox){
-			Vector3[] prePosition = new Vector3[currentBoxChild.Count];
-			for(int i = 0; i < currentBoxChild.Count ;i++){
-				prePosition[i] = currentBoxChild[i].transform.position;
+		if(haveCurrentTetris){
+			Vector3[] prePosition = new Vector3[currentTetrisBlockList.Count];
+			for(int i = 0; i < currentTetrisBlockList.Count ;i++){
+				prePosition[i] = currentTetrisBlockList[i].transform.position;
 			}
 
-			Vector3 centerPosition = currentBoxChild[0].transform.position;
-			foreach (GameObject boxChild in currentBoxChild) {
+			Vector3 centerPosition = currentTetrisBlockList[0].transform.position;
+			foreach (GameObject boxChild in currentTetrisBlockList) {
 				Vector3 dir = boxChild.transform.position - centerPosition;
 				dir = Quaternion.Euler(new Vector3(0,0,90))*dir;
 				boxChild.transform.position =  centerPosition + dir;
@@ -107,7 +108,7 @@ public class GameManager : MonoBehaviour {
 
 				float minX = 1f;
 				float maxX = 20f;
-				foreach (GameObject child in currentBoxChild) {
+				foreach (GameObject child in currentTetrisBlockList) {
 					Vector3 position = child.transform.position;
 					if(position.x > maxX){
 						maxX = position.x;
@@ -124,11 +125,11 @@ public class GameManager : MonoBehaviour {
 					padding = (1f - minX);
 				    //left over
 				}
-				currentBox.transform.position += new Vector3 (padding,0,0);
+				currentTetris.transform.position += new Vector3 (padding,0,0);
 
 			}else if(!checkOverlap()){
-				for(int i = 0; i < currentBoxChild.Count ;i++){
-					currentBoxChild[i].transform.position = prePosition[i];
+				for(int i = 0; i < currentTetrisBlockList.Count ;i++){
+					currentTetrisBlockList[i].transform.position = prePosition[i];
 				}
 			}
 		}
@@ -138,7 +139,7 @@ public class GameManager : MonoBehaviour {
 
 	bool checkInBound(){
 
-		foreach (GameObject boxChild in currentBoxChild) {
+		foreach (GameObject boxChild in currentTetrisBlockList) {
 			Vector3 position = boxChild.transform.position;
 			if(!(position.x >= 1 && position.x <= gridWidth && position.y >= 1)){
 			  return false;
@@ -150,8 +151,8 @@ public class GameManager : MonoBehaviour {
 	}
 
 	bool checkOverlap(){
-		foreach (GameObject stoppedBoxChild in boxChildStopped){
-			foreach (GameObject boxChild in currentBoxChild) {
+		foreach (GameObject stoppedBoxChild in stoppedTetrisBlockList){
+			foreach (GameObject boxChild in currentTetrisBlockList) {
 				Vector3 positionA = boxChild.transform.position;
 				Vector3 positionB = stoppedBoxChild.transform.position;
 				float dis = Mathf.Pow((positionA.x - positionB.x),2) + Mathf.Pow((positionA.y - positionB.y),2);
@@ -173,48 +174,132 @@ public class GameManager : MonoBehaviour {
 	}
 
 	void checkRowFull(){
-		for(int i = 1; i <= gridHeight ; i++){
+		/*for(int i = 1; i <= gridHeight; i++){
 			if(eachRowBlockAmount[i] == gridWidth){
 				moveRowDown(i);
 				for(int j = i; j<= gridHeight-1;j++){
 					eachRowBlockAmount[j] = eachRowBlockAmount[j+1];
 				}
-				i = 0; 
+				i = 0;
 				//every time when a row fall down scan from the begin when there is no full line the for will break
 			}
+		}*/
+		bool haveRowFull = false;
+
+		int[] temp = new int[gridHeight]; //the amount of block in each row
+		int[] movedis = new int[gridHeight+1]; // after we check all the row the distace that each row need to move
+		for (int i = 0; i < stoppedTetrisBlockList.Count; i++) {
+			int y = (int)stoppedTetrisBlockList[i].transform.position.y;
+			temp[y]++;
+			if(temp[y] == gridWidth){
+				for(int j = gridHeight; j >= y+1 ;j--){
+					movedis[j]++;
+				}
+				haveRowFull = true;
+			}
 		}
+
+		if(haveRowFull){
+			List<GameObject> needDestroy = new List<GameObject>();
+			for (int i = 0; i < stoppedTetrisBlockList.Count; i++) {
+				GameObject stoppedTetrisBlock = stoppedTetrisBlockList[i];
+				int x = (int)stoppedTetrisBlockList[i].transform.position.x;
+				int y = (int)stoppedTetrisBlockList[i].transform.position.y;
+
+				if(temp[y] < gridWidth){
+					stoppedTetrisBlockList[i].transform.position += new Vector3(0,-movedis[y],0);
+				}
+				if(temp[y] == gridWidth){
+					needDestroy.Add(stoppedTetrisBlock);
+				}
+			}
+
+			foreach (GameObject item in needDestroy) {
+				if(item.GetComponent<Block>().isZombie){
+					stoppedZombieBlockList.Remove(item);
+				}
+				stoppedTetrisBlockList.Remove(item);
+				DestroyImmediate(item.gameObject);
+			}
+		}
+
 	}
 
-	void moveRowDown(int row){
+	/*void moveRowDown(int row, int dis){
+
 		List<GameObject> finishDelete = new List<GameObject>();
 		List<GameObject> needDelete = new List<GameObject>();
-		for(int i = 0; i < boxChildStopped.Count ; i++){
-			if((int)boxChildStopped[i].transform.position.y > row){
-				boxChildStopped[i].transform.position += new Vector3(0,-1,0);
-				finishDelete.Add(boxChildStopped[i]);
-			}else if((int)boxChildStopped[i].transform.position.y == row){
-				needDelete.Add(boxChildStopped[i]);
+		for(int i = 0; i < stoppedTetrisBlockList.Count ; i++){
+			if((int)stoppedTetrisBlockList[i].transform.position.y > row){
+				stoppedTetrisBlockList[i].transform.position += new Vector3(0,-1,0);
+				finishDelete.Add(stoppedTetrisBlockList[i]);
+			}else if((int)stoppedTetrisBlockList[i].transform.position.y == row){
+				needDelete.Add(stoppedTetrisBlockList[i]);
 			}
 		}
 		foreach (GameObject item in needDelete) {
+			if(item.GetComponent<Block>().isZombie){
+				stoppedZombieBlockList.Remove(item);
+			}
 			DestroyImmediate(item.gameObject);
 		}
-		boxChildStopped = finishDelete;
-	}
+		stoppedTetrisBlockList = finishDelete;
+
+
+		for (int i = 0; i < stoppedTetrisBlockList.Count; i++) {
+			GameObject stoppedTetrisBlock = stoppedTetrisBlockList[i];
+			if((int)stoppedTetrisBlock.transform.position.y > row){
+				stoppedTetrisBlock.transform.position += new Vector3(0,-dis,0);
+			}else if((int)stoppedTetrisBlock.transform.position.y == row){
+				stoppedTetrisBlockList.Remove(stoppedTetrisBlock);
+				if(stoppedTetrisBlock.GetComponent<Block>().isZombie){
+					stoppedZombieBlockList.Remove(stoppedTetrisBlock);
+				}
+				DestroyImmediate(stoppedTetrisBlock);
+			}
+		}
+
+	}*/
 
 	void SpawnBox(){
-		currentBoxChild.Clear();
+		currentTetrisBlockList.Clear();
 		spawnInstance.SpawnBox();
 	}
 
 	void moveToStoppedList(){
-		foreach (GameObject boxChild in currentBoxChild) {
-			boxChildStopped.Add(boxChild);
-			int y = (int)boxChild.transform.position.y;
-			int x = (int)boxChild.transform.position.x;
-			boxChildStoppedArray[x-1,y-1] = boxChild;
-			boxStoppedTag[x-1,y-1] = 1;
+		foreach (GameObject tetrisBlock in currentTetrisBlockList) {
+			stoppedTetrisBlockList.Add(tetrisBlock);
+			if(tetrisBlock.GetComponent<Block>().isZombie){
+				stoppedZombieBlockList.Add(tetrisBlock);
+			}
+			int y = (int)tetrisBlock.transform.position.y;
 			eachRowBlockAmount[y]++; // there is one block be added to this line
+		}
+	}
+
+	void zombieInfect(){
+		List<GameObject> newZombieBlockList = new List<GameObject>();
+		foreach (GameObject zombieBlock  in stoppedZombieBlockList) {
+			int zombiex = (int)zombieBlock.transform.position.x;
+			int zombiey = (int)zombieBlock.transform.position.y;
+			foreach (GameObject stoppedTetrisBlock in stoppedTetrisBlockList) {
+				int normalx = (int)stoppedTetrisBlock.transform.position.x;
+				int normaly = (int)stoppedTetrisBlock.transform.position.y;
+				if(!stoppedTetrisBlock.GetComponent<Block>().isZombie){
+					if(Math.Abs(normalx - zombiex) == 1 && normaly == zombiey){
+							stoppedTetrisBlock.GetComponent<Block>().turnToZombie();
+							newZombieBlockList.Add(stoppedTetrisBlock);
+					}
+					
+					else if(Math.Abs(normaly - zombiey) == 1 && normalx == zombiex){
+						stoppedTetrisBlock.GetComponent<Block>().turnToZombie();
+						newZombieBlockList.Add(stoppedTetrisBlock);
+					}
+				}
+			}
+		}
+		for (int i = 0; i < newZombieBlockList.Count; i++) {
+			stoppedZombieBlockList.Add(newZombieBlockList[i]);
 		}
 	}
 

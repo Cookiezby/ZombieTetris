@@ -3,9 +3,17 @@ using System.Collections;
 
 public class Block : MonoBehaviour {
 
-	public bool isZombie;
+	public bool isZombie = false;
 
 	void Start(){
-		isZombie = false;
+
 	}
+
+
+	public void turnToZombie(){
+		gameObject.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("image/blockZombie");
+		isZombie = true;
+	}
+
+
 }

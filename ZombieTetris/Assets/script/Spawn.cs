@@ -7,10 +7,7 @@ public class Spawn : MonoBehaviour {
 	public  GameObject[] boxTemplate;
 	private GameManager gmInstance;
 
-	public Sprite zombieBlockSprite;
-	public Sprite normalBlockSprite;
-
-	public int frequencyOfZombie = 2; //  20% will have a zombie block 
+	public int frequencyOfZombie = 8; //  20% will have a zombie block 
 
 
 	void Awake(){
@@ -33,26 +30,27 @@ public class Spawn : MonoBehaviour {
 	  
 	}
 
-	void generateZombieBlock(GameObject box){
+	void generateZombieBlock(GameObject tetris){
 		int index = Random.Range(0,4);
-		GameObject block = box.transform.GetChild(index).gameObject;
-		block.GetComponent<SpriteRenderer>().sprite = zombieBlockSprite;
-		block.GetComponent<Block>().isZombie = true;
+		GameObject tetrisBlock = tetris.transform.GetChild(index).gameObject;
+		Sprite zombieSprite = Resources.Load<Sprite>("image/blockZombie");
+		tetrisBlock.GetComponent<SpriteRenderer>().sprite = zombieSprite;
+		tetrisBlock.GetComponent<Block>().isZombie = true;
 	}
 
 	public  void SpawnBox(){
 		int i = Random.Range(0,7);
-		GameObject box = Instantiate(boxTemplate[i].gameObject,transform.position,Quaternion.identity) as GameObject;
+		GameObject tetris = Instantiate(boxTemplate[i].gameObject,transform.position,Quaternion.identity) as GameObject;
 
-		int zombie = Random.Range(1,11);
+		int zombie = Random.Range(1,9);
 		if(zombie <= frequencyOfZombie){
-		   generateZombieBlock(box);
+		   generateZombieBlock(tetris);
+		}
+		gmInstance.currentTetris = tetris;
+		foreach(Transform child in tetris.transform){
+			gmInstance.currentTetrisBlockList.Add(child.gameObject);
 		}
 
-		gmInstance.currentBox = box;
-		foreach(Transform child in box.transform){
-			gmInstance.currentBoxChild.Add(child.gameObject);
-		}
-		gmInstance.haveCurrentBox = true;
+		gmInstance.haveCurrentTetris = true;
 	}
 }
