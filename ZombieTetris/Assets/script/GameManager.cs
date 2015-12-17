@@ -2,22 +2,26 @@
 using System.Collections;
 using System;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour {
 
+
 	public static GameManager instance;
-	public static int gridWidth = 20;
-	public static int gridHeight = 32;
+	public static int gridWidth = 15;
+	public static int gridHeight = 24;
 	private Spawn spawnInstance;
 	public bool haveCurrentTetris = false;
 
 
 	public List<GameObject> currentTetrisBlockList = new List<GameObject>();
 	private List<GameObject> stoppedTetrisBlockList = new List<GameObject>();
-	private int[] eachRowBlockAmount = new int[gridHeight + 1];
 	private List<GameObject> stoppedZombieBlockList = new List<GameObject>();
 
+
+	private BlockKind[,] blockKindArray = new BlockKind[gridWidth,gridHeight];
 	
+
 	void Awake(){
 		if(instance == null){
 			instance = this;
@@ -29,13 +33,16 @@ public class GameManager : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 	   spawnInstance = Spawn.instance;
-	   InvokeRepeating("moveDown",0f,0.2f);
+	   InvokeRepeating("moveDown",0f,0.4f);
 	}
 	// Update is called once per frame
 	void Update () {
 	    checkKey();
 	}
 
+
+
+//=======================================================
 //check the key
 	void checkKey(){
 		if(Input.GetKeyDown("a")){
@@ -67,6 +74,7 @@ public class GameManager : MonoBehaviour {
 				moveToStoppedList();
 				zombieInfect();
 				checkRowFull();
+				updateInfectedPercentageText();
 				SpawnBox();
 			}
 		}
@@ -97,10 +105,6 @@ public class GameManager : MonoBehaviour {
 		}
 	}
 	void rotate(){
-		//fake rotate
-		/*if(haveCurrentBox){
-			currentBox.transform.Rotate(0,0,90);
-		}*/
 		if(haveCurrentTetris){
 			Vector3[] prePosition = new Vector3[currentTetrisBlockList.Count];
 			for(int i = 0; i < currentTetrisBlockList.Count ;i++){
@@ -117,7 +121,7 @@ public class GameManager : MonoBehaviour {
 				//adjust to the right position, not refuse raotate;
 
 				float minX = 1f;
-				float maxX = 20f;
+				float maxX = (float)gridWidth;
 				foreach (GameObject child in currentTetrisBlockList) {
 					Vector3 position = child.transform.position;
 					if(position.x > maxX){
@@ -129,7 +133,7 @@ public class GameManager : MonoBehaviour {
 				}
 				float padding;
 				if(maxX > gridWidth){
-					padding = (20f - maxX);
+					padding = ((float)gridWidth - maxX);
 					//right over
 				}else{
 					padding = (1f - minX);
@@ -156,9 +160,7 @@ public class GameManager : MonoBehaviour {
 			if(!(position.x >= 1 && position.x <= gridWidth && position.y >= 1)){
 			  return false;
 			}
-			//Debug.Log(position.x+" "+position.y);
 		}
-		//Debug.Log("inBound");
 		return true;
 	}
 
@@ -198,16 +200,18 @@ public class GameManager : MonoBehaviour {
 		}*/
 		bool haveRowFull = false;
 
-		int[] temp = new int[gridHeight]; //the amount of block in each row
+		int[] temp = new int[gridHeight]; //the amount of block in each row //the spawn place is uper the scene
 		int[] movedis = new int[gridHeight+1]; // after we check all the row the distace that each row need to move
 		for (int i = 0; i < stoppedTetrisBlockList.Count; i++) {
 			int y = (int)stoppedTetrisBlockList[i].transform.position.y;
-			temp[y]++;
-			if(temp[y] == gridWidth){
-				for(int j = gridHeight; j >= y+1 ;j--){
-					movedis[j]++;
+			if(y >=1 && y <= gridWidth){
+				temp[y]++;
+				if(temp[y] == gridWidth){
+					for(int j = gridHeight; j >= y+1 ;j--){
+						movedis[j]++;
+					}
+					haveRowFull = true;
 				}
-				haveRowFull = true;
 			}
 		}
 
@@ -215,7 +219,6 @@ public class GameManager : MonoBehaviour {
 			List<GameObject> needDestroy = new List<GameObject>();
 			for (int i = 0; i < stoppedTetrisBlockList.Count; i++) {
 				GameObject stoppedTetrisBlock = stoppedTetrisBlockList[i];
-				int x = (int)stoppedTetrisBlockList[i].transform.position.x;
 				int y = (int)stoppedTetrisBlockList[i].transform.position.y;
 
 				if(temp[y] < gridWidth){
@@ -237,10 +240,7 @@ public class GameManager : MonoBehaviour {
 
 	}
 
-	void SpawnBox(){
-		currentTetrisBlockList.Clear();
-		spawnInstance.SpawnBox();
-	}
+	//=======================================================
 
 	void moveToStoppedList(){
 		foreach (GameObject tetrisBlock in currentTetrisBlockList) {
@@ -248,10 +248,34 @@ public class GameManager : MonoBehaviour {
 			if(tetrisBlock.GetComponent<Block>().kind == BlockKind.zombie){
 				stoppedZombieBlockList.Add(tetrisBlock);
 			}
-			int y = (int)tetrisBlock.transform.position.y;
-			eachRowBlockAmount[y]++; // there is one block be added to this line
+			
+			if(tetrisBlock.transform.position.y >= gridHeight){
+				gameOver();
+			}
 		}
+		
+		foreach (GameObject item in blockKindArray) {
+			int positionX = item.transform.position.x;
+			int positionY = item.transform.position.y;
+
+			int realX = positionX / 1;
+			int realY = positionY / 1;
+
+			blockKindArray[realX,realY] = item.GetComponent<Block>().kind;
+			item.GetComponent<Block>().setBlockPosition(realX,realY);
+
+		}
+		
+		
+		//update the blokkind array here
 	}
+
+
+	void SpawnBox(){
+		currentTetrisBlockList.Clear();
+		spawnInstance.SpawnBox();
+	}
+
 
 	void zombieInfect(){
 		List<GameObject> newZombieBlockList = new List<GameObject>();
@@ -263,13 +287,18 @@ public class GameManager : MonoBehaviour {
 				int normaly = (int)stoppedTetrisBlock.transform.position.y;
 				if(stoppedTetrisBlock.GetComponent<Block>().kind != BlockKind.zombie){
 					if(Math.Abs(normalx - zombiex) == 1 && normaly == zombiey){
-							stoppedTetrisBlock.GetComponent<Block>().turnToZombie();
-							newZombieBlockList.Add(stoppedTetrisBlock);
+							stoppedTetrisBlock.GetComponent<Block>().getHurt();
+						    if(stoppedTetrisBlock.GetComponent<Block>().kind == BlockKind.zombie){
+								newZombieBlockList.Add(stoppedTetrisBlock);
+							}
+							//
 					}
 					
 					else if(Math.Abs(normaly - zombiey) == 1 && normalx == zombiex){
-						stoppedTetrisBlock.GetComponent<Block>().turnToZombie();
-						newZombieBlockList.Add(stoppedTetrisBlock);
+						stoppedTetrisBlock.GetComponent<Block>().getHurt();
+						if(stoppedTetrisBlock.GetComponent<Block>().kind == BlockKind.zombie){
+							newZombieBlockList.Add(stoppedTetrisBlock);
+						}
 					}
 				}
 			}
@@ -277,6 +306,38 @@ public class GameManager : MonoBehaviour {
 		for (int i = 0; i < newZombieBlockList.Count; i++) {
 			stoppedZombieBlockList.Add(newZombieBlockList[i]);
 		}
+
+		if(stoppedTetrisBlockList.Count == stoppedZombieBlockList.Count && stoppedTetrisBlockList.Count > 0){
+			gameOver();
+		}
+	}
+
+	void updateInfectedPercentageText(){
+		Text infectedPercentageText = GameObject.Find("InfectedPercentage").GetComponent<Text>();
+		float percentage = (float)stoppedZombieBlockList.Count / (float)stoppedTetrisBlockList.Count * 100;
+
+		if(percentage < 50){
+			infectedPercentageText.color = Color.green;
+		}else if(percentage < 80){
+			infectedPercentageText.color = Color.yellow;
+		}else{
+			infectedPercentageText.color = Color.red;
+		}
+
+		infectedPercentageText.text = "Infected: "+percentage.ToString("f2")+"%";
+	}
+
+
+	void gameOver(){
+		//if the block has reach the top, the game is over
+		Time.timeScale = 0;
+		UIController.instance.setGameOverTextVisible();
+	}
+
+	//======get  set 
+
+	public BlockKind[,] getBlockKindArray(){
+		return blockKindArray;
 	}
 
 

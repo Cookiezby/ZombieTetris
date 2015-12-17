@@ -49,6 +49,8 @@
      <Compile Include="Assets\script\BoxType.cs" />
      <Compile Include="Assets\script\GameManager.cs" />
      <Compile Include="Assets\script\Spawn.cs" />
+     <Compile Include="Assets\script\UIController.cs" />
+     <Compile Include="Assets\script\fireBlock.cs" />
  <Reference Include="UnityEngine.UI">
  <HintPath>/Applications/Unity/Unity.app/Contents/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>
  </Reference>

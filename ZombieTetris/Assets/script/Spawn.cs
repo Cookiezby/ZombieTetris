@@ -5,13 +5,10 @@ using System.Collections.Generic;
 public class Spawn : MonoBehaviour {
 
 	public static Spawn instance;
-	public  GameObject[] boxTemplate;
 	private GameManager gmInstance;
 
 
     private List<List<Vector3>> tetrisTemplate = new List<List<Vector3>>();
-
-
 	public int frequencyOfZombie = 2; //  20% will have a zombie block 
 
 	void templatePosition(){
@@ -111,74 +108,39 @@ public class Spawn : MonoBehaviour {
 	  gmInstance = GameManager.instance;
 	  SpawnBox();
 	}
-	
-	// Update is called once per frame
-	void Update () {
-	  
-	}
-
-	/*void generateZombieBlock(GameObject tetris){
-		int index = Random.Range(0,4);
-		GameObject tetrisBlock = tetris.transform.GetChild(index).gameObject;
-		Sprite zombieSprite = Resources.Load<Sprite>("image/blockZombie");
-		tetrisBlock.GetComponent<SpriteRenderer>().sprite = zombieSprite;
-		tetrisBlock.GetComponent<Block>().kind = BlockKind.zombie;
-	}
-
-	void generateMedicalBlock(GameObject tetris){
-		int index = Random.Range(0,4);
-		GameObject tetrisBlock = tetris.transform.GetChild(index).gameObject;
-		Sprite medicalSprite = Resources.Load<Sprite>("image/blockMedical");
-		tetrisBlock.GetComponent<SpriteRenderer>().sprite = medicalSprite;
-		tetrisBlock.GetComponent<Block>().kind = BlockKind.medica;
-	}*/
-
-	/*public  void SpawnBox(){
-		int i = Random.Range(0,7);
-		GameObject tetris = Instantiate(boxTemplate[i].gameObject,transform.position,Quaternion.identity) as GameObject;
-
-
-		int randomKind = Random.Range(0,5);
-		switch(randomKind){
-		case 1:
-			generateZombieBlock(tetris);
-			break;
-		case 2:
-			generateMedicalBlock(tetris);
-			break;
-		}
-
-		gmInstance.currentTetris = tetris;
-		foreach(Transform child in tetris.transform){
-			gmInstance.currentTetrisBlockList.Add(child.gameObject);
-		}
-
-		gmInstance.haveCurrentTetris = true;
-	}*/
 
 	public void SpawnBox(){
 		int templateKind = Random.Range(0,7);
 		List<Vector3> blockPositions = tetrisTemplate[templateKind];
-
-
-
-
 	    for (int i = 0; i < blockPositions.Count; i++) {
 			GameObject block = Instantiate(Resources.Load("prefab/basicBlock")) as GameObject;
 			block.transform.position = blockPositions[i];
 			gmInstance.currentTetrisBlockList.Add(block);
-			int randomKind = Random.Range(0,5);
+			/*int randomKind = Random.Range(0,5);
 			switch(randomKind){
 			case 1:
-				block.GetComponent<Block>().turnToZombie();
+				int random = Random.Range(0,10);
+				if(random < frequencyOfZombie){
+					block.GetComponent<Block>().turnToZombie();
+				}
 				break;
-			case 2:
-				block.GetComponent<Block>().turnToMedical();
-				break;
-			}
+			}*/
+		}
+		gmInstance.haveCurrentTetris = true;
+
+		int randomKind = Random.Range(0,10);
+		if(randomKind < frequencyOfZombie){
+			int index = Random.Range(0,3);
+			gmInstance.currentTetrisBlockList[index].GetComponent<Block>().turnToZombie();
 		}
 
-		gmInstance.haveCurrentTetris = true;
+
+
+
+
+
+
+
 
 	}
 }
